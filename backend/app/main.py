@@ -57,6 +57,6 @@ app.include_router(teacher_routes.router, prefix="/api/teachers", tags=["Teacher
 app.include_router(audit_routes.router, prefix="/api/audit-logs", tags=["Audit Logs"])
 
 
-@app.get("/api/health")
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "ok", "service": "ahadiya-backend"}
