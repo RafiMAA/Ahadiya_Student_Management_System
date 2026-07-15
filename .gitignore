@@ -1,7 +1,28 @@
-.vscode/
-.vscode/
-node_modules/
-*.log
-backend/.env
-app/.env
+# Environments
 .env
+.venv/
+venv/
+env/
+backend/venv/
+
+# Node
+node_modules/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
