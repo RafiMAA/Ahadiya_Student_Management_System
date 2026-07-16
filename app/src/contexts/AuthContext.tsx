@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { setAccessToken } from '@/lib/apiClient';
+import api, { setAccessToken, startTokenRefresh, stopTokenRefresh } from '@/lib/apiClient';
 
 interface AuthUser {
   id: string;
@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('ahadiya_user');
       }
       setIsLoading(false);
+      startTokenRefresh(); // Keep token alive
 
       // Background validation — if token expired, will auto-redirect via apiClient 401 handler
       api.get<AuthUser>('/auth/me')
@@ -97,9 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
     // Store user data so next page load is instant (no /auth/me round trip)
     localStorage.setItem('ahadiya_user', JSON.stringify(userData));
+    startTokenRefresh();
   };
 
   const logout = () => {
+    stopTokenRefresh();
     setAccessToken(null);
     localStorage.removeItem('ahadiya_token');
     localStorage.removeItem('ahadiya_user');

@@ -47,6 +47,13 @@ async def logout(user: dict = Depends(get_current_user)):
     return {"message": "Logged out successfully"}
 
 
+@router.post("/refresh")
+async def refresh_token(user: dict = Depends(get_current_user)):
+    """Issue a fresh JWT using the current token's claims. No DB hit."""
+    token = create_access_token({"sub": user["id"], "role": user["role"]})
+    return {"access_token": token}
+
+
 @router.get("/me", response_model=UserProfile)
 async def get_me(
     user: dict = Depends(get_current_user),

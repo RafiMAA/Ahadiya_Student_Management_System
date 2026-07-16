@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 import asyncpg
 
 from app.database import get_db
@@ -56,10 +56,13 @@ async def create_academic_year(
 async def get_current_year(
     db: asyncpg.Pool = Depends(get_db),
     _user: dict = Depends(get_current_user),
+    response: Response = None,
 ):
     row = await db.fetchrow("SELECT * FROM academic_years WHERE is_current = TRUE")
     if not row:
         raise HTTPException(status_code=404, detail="No current academic year set")
+    if response:
+        response.headers["Cache-Control"] = "private, max-age=300"  # 5 min — rarely changes
     return _row_to_response(row)
 
 

@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+import time
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.config import get_settings
 from app.database import get_pool, close_pool
@@ -34,19 +36,31 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
-settings = get_settings()
+# ── Middleware stack (order matters: outermost first) ──
+
+# 1. Response timing — adds X-Response-Time header so we can measure real latency
+@app.middleware("http")
+async def add_response_time(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
+    response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
+    response.headers["Server-Timing"] = f"total;dur={elapsed_ms}"
+    return response
+
+# 2. CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Response-Time", "Server-Timing"],
 )
 
-# Compression
-from starlette.middleware.gzip import GZipMiddleware
+# 3. Compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 
 # Register routers
 app.include_router(auth_routes.router, prefix="/api/auth", tags=["Auth"])

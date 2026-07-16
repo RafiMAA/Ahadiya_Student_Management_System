@@ -1,7 +1,6 @@
-import asyncio
 from typing import Optional
 from datetime import date, datetime
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 import asyncpg
 
 from app.database import get_db
@@ -10,15 +9,17 @@ from app.models import UserProfile, AcademicYearResponse, AttendanceSummary
 
 router = APIRouter()
 
+
 @router.get("/bootstrap")
 async def dashboard_bootstrap(
     attendance_date: Optional[str] = None,
     db: asyncpg.Pool = Depends(get_db),
     user: dict = Depends(get_current_user),
+    response: Response = None,
 ):
     """
-    Combines User Profile, Current Academic Year, and Dashboard Summary into a single payload.
-    This eliminates the 3 serial waterfall API requests on application load.
+    Single-request bootstrap: User + Academic Year + Dashboard Summary.
+    Uses CTEs to collapse 8 queries into 2 DB round-trips.
     """
     from app.cache import (
         cache_get, cache_set, get_current_year_id,
@@ -26,7 +27,6 @@ async def dashboard_bootstrap(
     )
 
     if not attendance_date:
-        # Find the most recent Sunday
         today = date.today()
         days_since_sunday = (today.weekday() + 1) % 7
         attendance_date = str(today if days_since_sunday == 0 else today.replace(
@@ -35,41 +35,75 @@ async def dashboard_bootstrap(
     parsed_date = datetime.strptime(
         attendance_date, "%Y-%m-%d").date() if isinstance(attendance_date, str) else attendance_date
 
-    # Cached year ID is the foundation for all queries
     year_id = await get_current_year_id(db)
 
-    # Use a single connection to prevent pool exhaustion (PgBouncer max 15 connections)
+    # Check all caches upfront
+    cached_students = cache_get(TOTAL_STUDENTS)
+    cached_teachers = cache_get(TOTAL_TEACHERS)
+    cached_classes = cache_get(TOTAL_CLASSES)
+    cached_year_label = cache_get(CURRENT_YEAR)
+    cached_alumnis = cache_get(TOTAL_ALUMNIS)
+    all_counts_cached = all(v is not None for v in [
+        cached_students, cached_teachers, cached_classes, cached_year_label, cached_alumnis
+    ])
+
     async with db.acquire() as conn:
-        user_row = await conn.fetchrow(
-            """
-            SELECT t.id, t.full_name, t.username, t.contact, t.address, t.role,
-                   ('Grade ' || c.grade || ' ' || c.medium::TEXT || ' ' || c.gender_type::TEXT) AS assigned_class
-            FROM teachers t
-            LEFT JOIN classes c ON c.teacher_id = t.id AND c.academic_year_id = $2
-            WHERE t.id = $1
-            """,
-            user["id"], year_id,
-        )
+        # ── CTE Query 1: User profile + Academic year + aggregate counts ──
+        # Collapses 7 separate queries into 1 round-trip using CTEs
+        if all_counts_cached:
+            # Only need user + year (2 tiny indexed lookups)
+            meta_row = await conn.fetchrow(
+                """
+                WITH teacher AS (
+                    SELECT t.id, t.full_name, t.username, t.contact, t.address, t.role,
+                           ('Grade ' || c.grade || ' ' || c.medium::TEXT || ' ' || c.gender_type::TEXT) AS assigned_class
+                    FROM teachers t
+                    LEFT JOIN classes c ON c.teacher_id = t.id AND c.academic_year_id = $2
+                    WHERE t.id = $1
+                ),
+                acad_year AS (
+                    SELECT id, year_label, start_date, end_date, is_current, created_at
+                    FROM academic_years WHERE id = $2
+                )
+                SELECT
+                    t.id AS t_id, t.full_name, t.username, t.contact, t.address, t.role, t.assigned_class,
+                    ay.id AS ay_id, ay.year_label, ay.start_date, ay.end_date, ay.is_current, ay.created_at,
+                    0::BIGINT AS student_count, 0::BIGINT AS teacher_count,
+                    0::BIGINT AS class_count, ''::TEXT AS year_label_count, 0::BIGINT AS alumni_count
+                FROM teacher t, acad_year ay
+                """,
+                user["id"], year_id,
+            )
+        else:
+            # Need everything — single CTE query
+            meta_row = await conn.fetchrow(
+                """
+                WITH teacher AS (
+                    SELECT t.id, t.full_name, t.username, t.contact, t.address, t.role,
+                           ('Grade ' || c.grade || ' ' || c.medium::TEXT || ' ' || c.gender_type::TEXT) AS assigned_class
+                    FROM teachers t
+                    LEFT JOIN classes c ON c.teacher_id = t.id AND c.academic_year_id = $2
+                    WHERE t.id = $1
+                ),
+                acad_year AS (
+                    SELECT id, year_label, start_date, end_date, is_current, created_at
+                    FROM academic_years WHERE id = $2
+                ),
+                cnt_students AS (SELECT COUNT(*) AS n FROM students WHERE status = 'Active'),
+                cnt_teachers AS (SELECT COUNT(*) AS n FROM teachers WHERE status = 'Active'),
+                cnt_classes  AS (SELECT COUNT(*) AS n FROM classes WHERE academic_year_id = $2),
+                cnt_alumnis  AS (SELECT COUNT(*) AS n FROM students WHERE status = 'Alumni')
+                SELECT
+                    t.id AS t_id, t.full_name, t.username, t.contact, t.address, t.role, t.assigned_class,
+                    ay.id AS ay_id, ay.year_label, ay.start_date, ay.end_date, ay.is_current, ay.created_at,
+                    cs.n AS student_count, ct.n AS teacher_count, cc.n AS class_count,
+                    ay.year_label AS year_label_count, ca.n AS alumni_count
+                FROM teacher t, acad_year ay, cnt_students cs, cnt_teachers ct, cnt_classes cc, cnt_alumnis ca
+                """,
+                user["id"], year_id,
+            )
 
-        year_row = await conn.fetchrow("SELECT * FROM academic_years WHERE id = $1", year_id)
-
-        cached_students = cache_get(TOTAL_STUDENTS)
-        cached_teachers = cache_get(TOTAL_TEACHERS)
-        cached_classes = cache_get(TOTAL_CLASSES)
-        cached_year = cache_get(CURRENT_YEAR)
-        cached_alumnis = cache_get(TOTAL_ALUMNIS)
-
-        total_classes = cached_classes if cached_classes is not None else await conn.fetchval(
-            "SELECT COUNT(*) FROM classes WHERE academic_year_id = $1", year_id)
-        total_students = cached_students if cached_students is not None else await conn.fetchval(
-            "SELECT COUNT(*) FROM students WHERE status = 'Active'")
-        total_teachers = cached_teachers if cached_teachers is not None else await conn.fetchval(
-            "SELECT COUNT(*) FROM teachers WHERE status = 'Active'")
-        current_year = cached_year if cached_year is not None else (await conn.fetchval(
-            "SELECT year_label FROM academic_years WHERE id = $1", year_id) or "")
-        total_alumnis = cached_alumnis if cached_alumnis is not None else await conn.fetchval(
-            "SELECT COUNT(*) FROM students WHERE status = 'Alumni'")
-
+        # ── Query 2: Per-class attendance (single aggregate query) ──
         class_att_rows = await conn.fetch(
             """SELECT c.id AS class_id, c.grade, c.medium, c.gender_type,
                       COALESCE(SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END), 0) AS present,
@@ -77,7 +111,7 @@ async def dashboard_bootstrap(
                       COUNT(a.id) AS total
                FROM classes c
                LEFT JOIN (
-                   SELECT att.class_id, att.status, att.id 
+                   SELECT att.class_id, att.status, att.id
                    FROM attendance att
                    JOIN students st ON att.student_id = st.id
                    WHERE att.attendance_date = $1 AND st.current_class_id = att.class_id
@@ -88,39 +122,46 @@ async def dashboard_bootstrap(
             parsed_date, year_id,
         )
 
-    # 3. Assemble User Profile
+    # ── Assemble response ──
     user_profile = UserProfile(
-        id=str(user_row["id"]),
-        full_name=user_row["full_name"],
-        username=user_row["username"],
-        contact=user_row["contact"],
-        address=user_row["address"],
-        role=user_row["role"],
-        assigned_class=user_row["assigned_class"],
+        id=str(meta_row["t_id"]),
+        full_name=meta_row["full_name"],
+        username=meta_row["username"],
+        contact=meta_row["contact"],
+        address=meta_row["address"],
+        role=meta_row["role"],
+        assigned_class=meta_row["assigned_class"],
     )
 
-    # 4. Assemble Academic Year
     academic_year = AcademicYearResponse(
-        id=str(year_row["id"]),
-        year_label=year_row["year_label"],
-        start_date=year_row["start_date"],
-        end_date=year_row["end_date"],
-        is_current=year_row["is_current"],
-        created_at=year_row["created_at"],
+        id=str(meta_row["ay_id"]),
+        year_label=meta_row["year_label"],
+        start_date=meta_row["start_date"],
+        end_date=meta_row["end_date"],
+        is_current=meta_row["is_current"],
+        created_at=meta_row["created_at"],
     )
 
-    # 5. Assemble Attendance Summary
-    if cached_classes is None:
-        cache_set(TOTAL_CLASSES, total_classes)
+    # Resolve counts from cache or from the CTE result
+    total_students = cached_students if cached_students is not None else meta_row["student_count"]
+    total_teachers = cached_teachers if cached_teachers is not None else meta_row["teacher_count"]
+    total_classes = cached_classes if cached_classes is not None else meta_row["class_count"]
+    current_year = cached_year_label if cached_year_label is not None else (meta_row["year_label_count"] or "")
+    total_alumnis = cached_alumnis if cached_alumnis is not None else meta_row["alumni_count"]
+
+    # Update caches
     if cached_students is None:
         cache_set(TOTAL_STUDENTS, total_students)
     if cached_teachers is None:
         cache_set(TOTAL_TEACHERS, total_teachers)
-    if cached_year is None:
+    if cached_classes is None:
+        cache_set(TOTAL_CLASSES, total_classes)
+    if cached_year_label is None:
         cache_set(CURRENT_YEAR, current_year)
     if cached_alumnis is None:
         cache_set(TOTAL_ALUMNIS, total_alumnis)
 
+    # Derive attendance stats
     present = 0
     absent = 0
     classes_submitted = 0
@@ -155,7 +196,10 @@ async def dashboard_bootstrap(
         classes=classes_data,
     )
 
-    # 6. Return Combined Payload
+    # Cache-Control: browser can skip this request for 30s on back-navigation
+    if response:
+        response.headers["Cache-Control"] = "private, max-age=30"
+
     return {
         "user": user_profile,
         "academic_year": academic_year,

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # JWT
     jwt_secret: str = "change-me-to-a-32-char-minimum-secret-key"
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 480  # 8 hours
+    jwt_expire_minutes: int = 30  # 30 min — shorter TTL since auth is pure-JWT (no DB revocation check)
 
     # PDF
     pdf_school_name: str = "Ahadiya School"
