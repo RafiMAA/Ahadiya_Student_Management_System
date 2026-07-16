@@ -95,7 +95,9 @@ class StudentCreate(BaseModel):
     gender: Literal["Male", "Female"]
     date_of_birth: date
     parent_name: str
+    parent_name_2: Optional[str] = None
     parent_contact: str
+    parent_contact_2: Optional[str] = None
     medium: Literal["Sinhala", "Tamil"]
     current_grade: int = Field(ge=1, le=11)
     current_class_id: Optional[str] = None
@@ -106,7 +108,9 @@ class AlumniCreate(BaseModel):
     gender: Literal["Male", "Female"]
     date_of_birth: date
     parent_name: str
+    parent_name_2: Optional[str] = None
     parent_contact: str
+    parent_contact_2: Optional[str] = None
     own_contact: Optional[str] = None
     medium: Literal["Sinhala", "Tamil"]
     joined_date: date
@@ -117,7 +121,9 @@ class StudentUpdate(BaseModel):
     gender: Optional[Literal["Male", "Female"]] = None
     date_of_birth: Optional[date] = None
     parent_name: Optional[str] = None
+    parent_name_2: Optional[str] = None
     parent_contact: Optional[str] = None
+    parent_contact_2: Optional[str] = None
     medium: Optional[Literal["Sinhala", "Tamil"]] = None
     current_grade: Optional[int] = Field(default=None, ge=1, le=11)
     current_class_id: Optional[str] = None
@@ -130,7 +136,9 @@ class StudentResponse(BaseModel):
     gender: str
     date_of_birth: date
     parent_name: str
+    parent_name_2: Optional[str] = None
     parent_contact: str
+    parent_contact_2: Optional[str] = None
     own_contact: Optional[str] = None
     medium: str
     current_grade: int

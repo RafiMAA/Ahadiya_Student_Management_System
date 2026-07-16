@@ -141,10 +141,21 @@ export default function StudentProfile() {
               <div className="flex items-start gap-3 text-sm">
                 <Phone className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Contact Number</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Parent's Number</p>
                   <p className="font-medium text-slate-900 dark:text-white">{student.parent_contact}</p>
                 </div>
               </div>
+              {student.parent_contact_2 && (
+                <div className="flex items-start gap-3 text-sm">
+                  <Phone className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {student.parent_name_2 ? `${student.parent_name_2}'s Number` : "Secondary Number"}
+                    </p>
+                    <p className="font-medium text-slate-900 dark:text-white">{student.parent_contact_2}</p>
+                  </div>
+                </div>
+              )}
               {student.status === 'Alumni' && (
                 <div className="flex items-start gap-3 text-sm">
                   <Phone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
@@ -160,60 +171,64 @@ export default function StudentProfile() {
 
         {/* Right Column: Attendance History */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm text-center">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Sundays</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{history.length}</p>
-            </div>
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm text-center">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Present</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{presentCount}</p>
-            </div>
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm text-center relative overflow-hidden">
-              <div className="absolute inset-x-0 bottom-0 h-1 bg-slate-100 dark:bg-slate-800">
-                <div className="h-full bg-emerald-500" style={{ width: `${attendanceRate}%` }} />
-              </div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Attendance Rate</p>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{attendanceRate}%</p>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent Attendance</h3>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto">
-              {history.slice(0, 5).map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    {record.status === 'Present' ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-red-500" />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">
-                        {format(parseISO(record.attendance_date), 'MMMM dd, yyyy')}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Class: {record.class_name}</p>
-                    </div>
+          {student.status !== 'Alumni' && (
+            <>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm text-center">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Sundays</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{history.length}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm text-center">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Present</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{presentCount}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm text-center relative overflow-hidden">
+                  <div className="absolute inset-x-0 bottom-0 h-1 bg-slate-100 dark:bg-slate-800">
+                    <div className="h-full bg-emerald-500" style={{ width: `${attendanceRate}%` }} />
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                    record.status === 'Present' 
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' 
-                      : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                  }`}>
-                    {record.status}
-                  </span>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Attendance Rate</p>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{attendanceRate}%</p>
                 </div>
-              ))}
-              {history.length === 0 && (
-                <div className="p-8 text-center text-slate-400 text-sm">
-                  No attendance records found for this student.
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent Attendance</h3>
                 </div>
-              )}
-            </div>
-          </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto">
+                  {history.slice(0, 5).map((record) => (
+                    <div key={record.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        {record.status === 'Present' ? (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">
+                            {format(parseISO(record.attendance_date), 'MMMM dd, yyyy')}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Class: {record.class_name}</p>
+                        </div>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        record.status === 'Present' 
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' 
+                          : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                      }`}>
+                        {record.status}
+                      </span>
+                    </div>
+                  ))}
+                  {history.length === 0 && (
+                    <div className="p-8 text-center text-slate-400 text-sm">
+                      No attendance records found for this student.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Student Report */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">

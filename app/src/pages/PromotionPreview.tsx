@@ -150,74 +150,79 @@ export default function PromotionPreview() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Promotion Preview</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Review the changes before applying them to the database.</p>
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Promotion Preview</h2>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">Review the changes before applying them to the database.</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button onClick={exportPDF} disabled={previewData.length === 0 || loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
-              <FileText className="w-4 h-4 text-red-500" /> Download PDF
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:ml-auto">
+          <div className="flex gap-2">
+            <button onClick={exportPDF} disabled={previewData.length === 0 || loading} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
+              <FileText className="w-4 h-4 text-red-500 shrink-0" /> <span>PDF</span>
             </button>
-            <button onClick={exportExcel} disabled={previewData.length === 0 || loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
-              <Download className="w-4 h-4 text-emerald-500" /> Download Excel
+            <button onClick={exportExcel} disabled={previewData.length === 0 || loading} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">
+              <Download className="w-4 h-4 text-emerald-500 shrink-0" /> <span>Excel</span>
             </button>
           </div>
-          <button 
-            onClick={() => setUndoDialog(true)} 
-            disabled={loading}
-            className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors active:scale-95"
-          >
-            <RotateCcw className="w-4 h-4" /> Undo Last Promotion
-          </button>
-          <button 
-            onClick={() => setConfirmDialog(true)} 
-            disabled={previewData.length === 0 || loading}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-sm font-medium rounded-lg transition-colors active:scale-95"
-          >
-            <Play className="w-4 h-4" /> Execute Promotion
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Affected</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{previewData.length}</p>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">To Promote</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{previewData.filter(d => d.action === 'PROMOTE').length}</p>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" /></svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">To Graduate</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{previewData.filter(d => d.action === 'GRADUATE').length}</p>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setUndoDialog(true)} 
+              disabled={loading}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-medium rounded-lg transition-colors active:scale-95"
+            >
+              <RotateCcw className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Undo Last</span><span className="sm:hidden">Undo</span>
+            </button>
+            <button 
+              onClick={() => setConfirmDialog(true)} 
+              disabled={previewData.length === 0 || loading}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors active:scale-95"
+            >
+              <Play className="w-4 h-4 shrink-0" /> Execute
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 shrink-0">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+          </div>
+          <div className="text-center sm:text-left">
+            <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Total</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{previewData.length}</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+          <div className="text-center sm:text-left">
+            <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Promote</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{previewData.filter(d => d.action === 'PROMOTE').length}</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" /></svg>
+          </div>
+          <div className="text-center sm:text-left">
+            <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Graduate</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{previewData.filter(d => d.action === 'GRADUATE').length}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="overflow-x-auto max-h-[600px]">
           <table className="w-full">
             <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
@@ -265,6 +270,39 @@ export default function PromotionPreview() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile card view */}
+      <div className="md:hidden space-y-2">
+        {loading ? (
+          <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" /></div>
+        ) : previewData.length === 0 ? (
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-8 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 mb-3">
+              <AlertTriangle className="w-6 h-6 text-slate-400" />
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">No students available for promotion.</p>
+            <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">Please ensure promotion rules are defined and there are active students.</p>
+          </div>
+        ) : previewData.map((row) => (
+          <div key={row.student_id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-3">
+            <div className="flex items-center justify-between mb-2">
+              <Link to={`/students/${row.student_id}`} className="text-sm font-medium text-slate-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 truncate max-w-[60%]">
+                {row.student_name}
+              </Link>
+              <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold tracking-wide shrink-0 ${getActionBadge(row.action)}`}>
+                {row.action}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <span>{row.gender}</span>
+              <span className="text-slate-300 dark:text-slate-600">•</span>
+              <span>{row.current_class}</span>
+              <span className="text-slate-300 dark:text-slate-600">→</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">{row.target_class}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
       <Dialog open={confirmDialog} onOpenChange={setConfirmDialog}>

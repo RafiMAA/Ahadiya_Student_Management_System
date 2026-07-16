@@ -18,7 +18,9 @@ export default function EditStudent() {
     gender: "" as "Male" | "Female" | "",
     dob: "",
     parentName: "",
+    parentName2: "",
     parentContact: "",
+    parentContact2: "",
     medium: "" as "Sinhala" | "Tamil" | "",
     grade: "",
     classId: "",
@@ -40,7 +42,9 @@ export default function EditStudent() {
           gender: studentData.gender as any,
           dob: studentData.date_of_birth,
           parentName: studentData.parent_name || "",
+          parentName2: studentData.parent_name_2 || "",
           parentContact: studentData.parent_contact || "",
+          parentContact2: studentData.parent_contact_2 || "",
           medium: studentData.medium as any,
           grade: studentData.current_grade.toString(),
           classId: studentData.current_class_id || "",
@@ -78,6 +82,8 @@ export default function EditStudent() {
     if (!form.parentName) errs.parentName = "Required";
     if (!form.parentContact || !/^[0-9]{10}$/.test(form.parentContact))
       errs.parentContact = "Must be 10 digits";
+    if (form.parentContact2 && !/^[0-9]{10}$/.test(form.parentContact2))
+      errs.parentContact2 = "Must be 10 digits";
     if (!form.medium) errs.medium = "Required";
     if (!form.grade) errs.grade = "Required";
     if (!form.classId) errs.classId = "Required";
@@ -95,7 +101,9 @@ export default function EditStudent() {
         gender: form.gender,
         date_of_birth: form.dob,
         parent_name: form.parentName,
+        parent_name_2: form.parentName2 || null,
         parent_contact: form.parentContact,
+        parent_contact_2: form.parentContact2 || null,
         medium: form.medium,
         current_grade: parseInt(form.grade),
         current_class_id: form.classId || null,
@@ -262,6 +270,37 @@ export default function EditStudent() {
             {errors.parentContact && (
               <p className="mt-1 text-xs text-red-500">
                 {errors.parentContact}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+              Secondary Contact Name <span className="text-xs text-slate-400 font-normal">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.parentName2}
+              onChange={(e) => handleChange("parentName2", e.target.value)}
+              className={inputClass("parentName2")}
+              placeholder="Enter parent's name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
+              Secondary Contact <span className="text-xs text-slate-400 font-normal">(Optional)</span>
+            </label>
+            <input
+              type="tel"
+              value={form.parentContact2}
+              onChange={(e) => handleChange("parentContact2", e.target.value)}
+              className={inputClass("parentContact2")}
+              placeholder="e.g. 0771234567"
+            />
+            {errors.parentContact2 && (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.parentContact2}
               </p>
             )}
           </div>

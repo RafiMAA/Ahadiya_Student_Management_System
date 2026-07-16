@@ -16,8 +16,8 @@ def _row_to_response(r) -> StudentResponse:
     return StudentResponse(
         id=str(r["id"]), registration_number=r["registration_number"],
         full_name=r["full_name"], gender=r["gender"],
-        date_of_birth=r["date_of_birth"], parent_name=r["parent_name"],
-        parent_contact=r["parent_contact"], own_contact=r.get("own_contact"), medium=r["medium"],
+        date_of_birth=r["date_of_birth"], parent_name=r["parent_name"], parent_name_2=r.get("parent_name_2"),
+        parent_contact=r["parent_contact"], parent_contact_2=r.get("parent_contact_2"), own_contact=r.get("own_contact"), medium=r["medium"],
         current_grade=r["current_grade"],
         current_class_id=str(r["current_class_id"]) if r.get("current_class_id") else None,
         class_name=r.get("class_name"), status=r["status"],
@@ -113,10 +113,10 @@ async def create_student(
 
     row = await db.fetchrow(
         """INSERT INTO students (registration_number, full_name, gender, date_of_birth,
-                parent_name, parent_contact, medium, current_grade, current_class_id, joined_date)
-           VALUES ($1, $2, $3::gender_enum, $4, $5, $6, $7::medium_type, $8, $9, $10) RETURNING *""",
+                parent_name, parent_name_2, parent_contact, parent_contact_2, medium, current_grade, current_class_id, joined_date)
+           VALUES ($1, $2, $3::gender_enum, $4, $5, $6, $7, $8, $9::medium_type, $10, $11, $12) RETURNING *""",
         reg_number, body.full_name, body.gender, body.date_of_birth,
-        body.parent_name, body.parent_contact, body.medium,
+        body.parent_name, body.parent_name_2, body.parent_contact, body.parent_contact_2, body.medium,
         body.current_grade, body.current_class_id, body.joined_date,
     )
 
@@ -155,10 +155,10 @@ async def create_alumni(
     # For alumni, they don't have a current_grade or current_class_id. We'll set current_grade to 11 (max) just to satisfy the NOT NULL CHECK (current_grade >= 1 AND current_grade <= 11) constraint in the DB.
     row = await db.fetchrow(
         """INSERT INTO students (registration_number, full_name, gender, date_of_birth,
-                parent_name, parent_contact, own_contact, medium, current_grade, current_class_id, joined_date, status, graduation_year)
-           VALUES ($1, $2, $3::gender_enum, $4, $5, $6, $7, $8::medium_type, 11, NULL, $9, 'Alumni', $10) RETURNING *""",
+                parent_name, parent_name_2, parent_contact, parent_contact_2, own_contact, medium, current_grade, current_class_id, joined_date, status, graduation_year)
+           VALUES ($1, $2, $3::gender_enum, $4, $5, $6, $7, $8, $9, $10::medium_type, 11, NULL, $11, 'Alumni', $12) RETURNING *""",
         reg_number, body.full_name, body.gender, body.date_of_birth,
-        body.parent_name, body.parent_contact, body.own_contact, body.medium,
+        body.parent_name, body.parent_name_2, body.parent_contact, body.parent_contact_2, body.own_contact, body.medium,
         body.joined_date, body.graduation_year,
     )
 

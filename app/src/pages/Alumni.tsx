@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Eye, Plus } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/contexts/ToastContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,7 +23,7 @@ export default function Alumni() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     fullName: '', gender: 'Male' as 'Male' | 'Female', dateOfBirth: '',
-    parentName: '', parentContact: '', ownContact: '',
+    parentName: '', parentName2: '', parentContact: '', parentContact2: '', ownContact: '',
     medium: 'Sinhala' as 'Sinhala' | 'Tamil', joinedDate: '', graduationYear: ''
   });
 
@@ -39,7 +39,13 @@ export default function Alumni() {
   });
 
   const allAlumni = data?.items || [];
-  const alumni = yearFilter ? allAlumni.filter(i => i.graduation_year === yearFilter) : allAlumni;
+  const filtered = yearFilter ? allAlumni.filter(i => i.graduation_year === yearFilter) : allAlumni;
+  // Sort by graduation year descending (most recently graduated first)
+  const alumni = [...filtered].sort((a, b) => {
+    const yearA = parseInt(a.graduation_year || '0');
+    const yearB = parseInt(b.graduation_year || '0');
+    return yearB - yearA;
+  });
   const totalRecords = data?.total || 0;
   const totalPages = data?.total_pages || 1;
 
@@ -57,7 +63,9 @@ export default function Alumni() {
         gender: form.gender,
         date_of_birth: form.dateOfBirth,
         parent_name: form.parentName,
+        parent_name_2: form.parentName2 || undefined,
         parent_contact: form.parentContact,
+        parent_contact_2: form.parentContact2 || undefined,
         own_contact: form.ownContact || undefined,
         medium: form.medium,
         joined_date: form.joinedDate,
@@ -68,7 +76,7 @@ export default function Alumni() {
       queryClient.invalidateQueries({ queryKey: ['alumni'] });
       setForm({
         fullName: '', gender: 'Male', dateOfBirth: '',
-        parentName: '', parentContact: '', ownContact: '',
+        parentName: '', parentName2: '', parentContact: '', parentContact2: '', ownContact: '',
         medium: 'Sinhala', joinedDate: '', graduationYear: ''
       });
     } catch (err: any) {
@@ -111,39 +119,29 @@ export default function Alumni() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-                <th className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3">Reg No.</th>
-                <th className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3">Name</th>
-                <th className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3">Gender</th>
-                <th className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3">Last Class</th>
-                <th className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3">Medium</th>
-                <th className="text-center text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3">Graduation Year</th>
-                <th className="text-center text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3">Actions</th>
+                <th className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3 w-1/4">Name</th>
+                <th className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3 w-1/4">Gender</th>
+                <th className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3 w-1/4">Contact Number</th>
+                <th className="text-center text-xs font-semibold text-slate-500 dark:text-slate-400 px-4 py-3 w-1/4">Graduated Year</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-12"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600 mx-auto" /></td></tr>
+                <tr><td colSpan={4} className="text-center py-12"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600 mx-auto" /></td></tr>
               ) : alumni.map(student => (
-                <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                  <td className="px-4 py-3 text-sm text-slate-500 font-mono">{student.registration_number}</td>
+                <tr key={student.id} onClick={() => navigate(`/students/${student.id}`)} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
                   <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{student.full_name}</td>
                   <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{student.gender}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{student.class_name || 'N/A'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{student.medium}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{student.own_contact || student.parent_contact}</td>
                   <td className="px-4 py-3 text-center">
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                       {student.graduation_year || 'Unknown'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <button onClick={() => navigate(`/students/${student.id}`)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors">
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </td>
                 </tr>
               ))}
               {!loading && alumni.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">No alumni found</td></tr>
+                <tr><td colSpan={4} className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">No alumni found</td></tr>
               )}
             </tbody>
           </table>
@@ -190,6 +188,14 @@ export default function Alumni() {
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Parent's Contact *</label>
               <input type="text" value={form.parentContact} onChange={e => setForm({...form, parentContact: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-800" required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Secondary Contact Name</label>
+              <input type="text" value={form.parentName2} onChange={e => setForm({...form, parentName2: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-800" placeholder="Enter parent's name" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Secondary Contact</label>
+              <input type="text" value={form.parentContact2} onChange={e => setForm({...form, parentContact2: e.target.value})} className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-800" placeholder="e.g. 0771234567" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Own Contact</label>

@@ -5,7 +5,9 @@ export interface Student {
   gender: 'Male' | 'Female';
   date_of_birth: string;
   parent_name: string;
+  parent_name_2?: string;
   parent_contact: string;
+  parent_contact_2?: string;
   own_contact?: string;
   medium: 'Sinhala' | 'Tamil';
   current_grade: string;

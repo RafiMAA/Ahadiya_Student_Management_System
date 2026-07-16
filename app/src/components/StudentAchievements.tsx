@@ -86,7 +86,7 @@ export default function StudentAchievements({ studentId }: Props) {
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
           <FileText className="w-4 h-4 text-amber-500" /> Add Report
         </h3>
-        <form onSubmit={handleAdd} className="flex gap-3">
+        <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
@@ -97,7 +97,7 @@ export default function StudentAchievements({ studentId }: Props) {
           <button
             type="submit"
             disabled={submitting || !text.trim()}
-            className="self-end flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-medium rounded-lg transition-colors text-sm shrink-0"
+            className="w-full sm:w-auto sm:self-end flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-medium rounded-lg transition-colors text-sm shrink-0"
           >
             <Send className="w-4 h-4" />
             {submitting ? 'Adding...' : 'Add Report'}
