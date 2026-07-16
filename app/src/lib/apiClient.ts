@@ -48,7 +48,6 @@ function stopTokenRefresh() {
 }
 
 // Start refresh when token is set, stop when cleared
-const originalSetToken = setAccessToken;
 export { startTokenRefresh, stopTokenRefresh };
 
 class ApiError extends Error {
