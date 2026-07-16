@@ -84,10 +84,16 @@ async function request<T>(
     const res = await fetch(url, { ...options, headers });
 
     if (res.status === 401) {
-      // Token expired or invalid — redirect to login
+      // Token expired or invalid — clear state
       setAccessToken(null);
       stopTokenRefresh();
-      window.location.href = '/login';
+      localStorage.removeItem('ahadiya_token');
+      localStorage.removeItem('ahadiya_user');
+      
+      // Redirect to login if we aren't already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
       throw new ApiError(401, 'Unauthorized');
     }
 
