@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedUser = localStorage.getItem('ahadiya_user');
 
     if (token && storedUser) {
-      // Instant hydration — no waiting for /auth/me
+      // Instant hydration — no waiting for network
       setAccessToken(token);
       try {
         setUser(JSON.parse(storedUser));
@@ -46,20 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setIsLoading(false);
       startTokenRefresh(); // Keep token alive
-
-      // Background validation — if token expired, will auto-redirect via apiClient 401 handler
-      api.get<AuthUser>('/auth/me')
-        .then((freshUser) => {
-          setUser(freshUser);
-          localStorage.setItem('ahadiya_user', JSON.stringify(freshUser));
-        })
-        .catch(() => {
-          // Token invalid — clear everything
-          localStorage.removeItem('ahadiya_token');
-          localStorage.removeItem('ahadiya_user');
-          setAccessToken(null);
-          setUser(null);
-        });
+      // No background /auth/me call needed — the bootstrap endpoint
+      // validates the token and returns fresh user data anyway.
     } else if (token) {
       // Token exists but no stored user — must call /auth/me
       setAccessToken(token);

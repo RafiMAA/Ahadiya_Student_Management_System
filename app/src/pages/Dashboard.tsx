@@ -79,8 +79,19 @@ export default function Dashboard() {
     queryKey: ['dashboard-bootstrap'],
     queryFn: async () => {
       const data = await api.get<BootstrapData>('/dashboard/bootstrap');
-      // Pre-seed AppContext cache to prevent extra network requests
+      // Pre-seed React Query cache so AppContext doesn't fire a separate /current request
       queryClient.setQueryData(['current-academic-year'], data.academic_year);
+      // Persist to localStorage for instant hydration on next page load
+      localStorage.setItem('ahadiya_academic_year', JSON.stringify(data.academic_year));
+      // Update stored user data with fresh profile from bootstrap
+      if (data.user) {
+        localStorage.setItem('ahadiya_user', JSON.stringify({
+          id: data.user.id,
+          full_name: data.user.full_name,
+          username: data.user.username,
+          role: data.user.role,
+        }));
+      }
       return data.summary;
     },
   });
