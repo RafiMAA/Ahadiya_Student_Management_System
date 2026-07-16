@@ -151,8 +151,7 @@ export default function EditStudent() {
         </h2>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
+      <div
         className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden"
       >
         {/* Tabs */}
@@ -182,6 +181,7 @@ export default function EditStudent() {
         </div>
 
         {activeTab === 'profile' ? (
+        <form onSubmit={handleSubmit}>
         <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-2">
@@ -398,12 +398,13 @@ export default function EditStudent() {
           </button>
         </div>
         </div>
+        </form>
         ) : (
           <div className="p-6">
             <StudentAchievements studentId={id!} />
           </div>
         )}
-      </form>
+      </div>
     </div>
   );
 }
