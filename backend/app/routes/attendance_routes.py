@@ -250,91 +250,55 @@ async def attendance_summary(
     # Get cached academic year ID upfront — avoids subqueries in every SQL below
     year_id = await get_current_year_id(db)
 
-    # Try cache for slow-changing aggregate counts
-    cached_students = cache_get(TOTAL_STUDENTS)
-    cached_teachers = cache_get(TOTAL_TEACHERS)
-    cached_classes = cache_get(TOTAL_CLASSES)
-    cached_year = cache_get(CURRENT_YEAR)
-    cached_alumnis = cache_get(TOTAL_ALUMNIS)
+    # Use a single connection to prevent pool exhaustion
+    async with db.acquire() as conn:
+        cached_students = cache_get(TOTAL_STUDENTS)
+        cached_teachers = cache_get(TOTAL_TEACHERS)
+        cached_classes = cache_get(TOTAL_CLASSES)
+        cached_year = cache_get(CURRENT_YEAR)
+        cached_alumnis = cache_get(TOTAL_ALUMNIS)
 
-    # Build list of DB calls — only fetch what's not cached
-    tasks = []
-    task_keys = []
+        total_classes = cached_classes if cached_classes is not None else await conn.fetchval(
+            "SELECT COUNT(*) FROM classes WHERE academic_year_id = $1", year_id)
+        total_students = cached_students if cached_students is not None else await conn.fetchval(
+            "SELECT COUNT(*) FROM students WHERE status = 'Active'")
+        total_teachers = cached_teachers if cached_teachers is not None else await conn.fetchval(
+            "SELECT COUNT(*) FROM teachers WHERE status = 'Active'")
+        current_year = cached_year if cached_year is not None else (await conn.fetchval(
+            "SELECT year_label FROM academic_years WHERE id = $1", year_id) or "")
+        total_alumnis = cached_alumnis if cached_alumnis is not None else await conn.fetchval(
+            "SELECT COUNT(*) FROM students WHERE status = 'Alumni'")
 
-    if cached_classes is None:
-        tasks.append(db.fetchval(
-            "SELECT COUNT(*) FROM classes WHERE academic_year_id = $1", year_id
-        ))
-        task_keys.append("classes")
-    if cached_students is None:
-        tasks.append(db.fetchval("SELECT COUNT(*) FROM students WHERE status = 'Active'"))
-        task_keys.append("students")
-    if cached_teachers is None:
-        tasks.append(db.fetchval("SELECT COUNT(*) FROM teachers WHERE status = 'Active'"))
-        task_keys.append("teachers")
-    if cached_year is None:
-        tasks.append(db.fetchval("SELECT year_label FROM academic_years WHERE id = $1", year_id))
-        task_keys.append("year")
-    if cached_alumnis is None:
-        tasks.append(db.fetchval("SELECT COUNT(*) FROM students WHERE status = 'Alumni'"))
-        task_keys.append("alumnis")
-
-    # Per-class attendance data — single query that gives us everything we need
-    # We derive overall present/absent/classes_submitted from this, eliminating 2 separate queries
-    tasks.append(db.fetch(
-        """SELECT c.id AS class_id, c.grade, c.medium, c.gender_type,
-                  COALESCE(SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END), 0) AS present,
-                  COALESCE(SUM(CASE WHEN a.status = 'Absent' THEN 1 ELSE 0 END), 0) AS absent,
-                  COUNT(a.id) AS total
-           FROM classes c
-           LEFT JOIN (
-               SELECT att.class_id, att.status, att.id 
-               FROM attendance att
-               JOIN students st ON att.student_id = st.id
-               WHERE att.attendance_date = $1 AND st.current_class_id = att.class_id
-           ) a ON a.class_id = c.id
-           WHERE c.academic_year_id = $2
-           GROUP BY c.id, c.grade, c.medium, c.gender_type
-           ORDER BY c.medium, c.grade, c.gender_type""",
-        parsed_date, year_id,
-    ))
-    task_keys.append("class_att_rows")
-
-    results = await asyncio.gather(*tasks)
-    result_map = dict(zip(task_keys, results))
+        # Per-class attendance data — single query that gives us everything we need
+        class_att_rows = await conn.fetch(
+            """SELECT c.id AS class_id, c.grade, c.medium, c.gender_type,
+                      COALESCE(SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END), 0) AS present,
+                      COALESCE(SUM(CASE WHEN a.status = 'Absent' THEN 1 ELSE 0 END), 0) AS absent,
+                      COUNT(a.id) AS total
+               FROM classes c
+               LEFT JOIN (
+                   SELECT att.class_id, att.status, att.id 
+                   FROM attendance att
+                   JOIN students st ON att.student_id = st.id
+                   WHERE att.attendance_date = $1 AND st.current_class_id = att.class_id
+               ) a ON a.class_id = c.id
+               WHERE c.academic_year_id = $2
+               GROUP BY c.id, c.grade, c.medium, c.gender_type
+               ORDER BY c.medium, c.grade, c.gender_type""",
+            parsed_date, year_id,
+        )
 
     # Populate from cache or fresh results, and update cache
-    if cached_classes is not None:
-        total_classes = cached_classes
-    else:
-        total_classes = result_map["classes"]
+    if cached_classes is None:
         cache_set(TOTAL_CLASSES, total_classes)
-
-    if cached_students is not None:
-        total_students = cached_students
-    else:
-        total_students = result_map["students"]
+    if cached_students is None:
         cache_set(TOTAL_STUDENTS, total_students)
-
-    if cached_teachers is not None:
-        total_teachers = cached_teachers
-    else:
-        total_teachers = result_map["teachers"]
+    if cached_teachers is None:
         cache_set(TOTAL_TEACHERS, total_teachers)
-
-    if cached_year is not None:
-        current_year = cached_year
-    else:
-        current_year = result_map["year"] or ""
+    if cached_year is None:
         cache_set(CURRENT_YEAR, current_year)
-        
-    if cached_alumnis is not None:
-        total_alumnis = cached_alumnis
-    else:
-        total_alumnis = result_map["alumnis"]
+    if cached_alumnis is None:
         cache_set(TOTAL_ALUMNIS, total_alumnis)
-
-    class_att_rows = result_map["class_att_rows"]
 
     # Derive overall stats + per-class data from the single query result
     # This replaces 2 separate DB queries (overall_att + classes_submitted)
