@@ -96,7 +96,7 @@ export default function EditStudent() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await api.put(`/students/${id}`, {
+      await api.patch(`/students/${id}`, {
         full_name: form.fullName,
         gender: form.gender,
         date_of_birth: form.dob,
@@ -204,18 +204,18 @@ export default function EditStudent() {
             <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
               Gender <span className="text-red-500">*</span>
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 opacity-60 cursor-not-allowed">
               <button
                 type="button"
-                onClick={() => handleChange("gender", "Male")}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border ${form.gender === "Male" ? "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-400" : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"}`}
+                disabled
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border ${form.gender === "Male" ? "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-400" : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"}`}
               >
                 Male
               </button>
               <button
                 type="button"
-                onClick={() => handleChange("gender", "Female")}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border ${form.gender === "Female" ? "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-400" : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"}`}
+                disabled
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border ${form.gender === "Female" ? "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-400" : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"}`}
               >
                 Female
               </button>
@@ -316,8 +316,8 @@ export default function EditStudent() {
                 </label>
                 <select
                   value={form.medium}
-                  onChange={(e) => handleChange("medium", e.target.value)}
-                  className={inputClass("medium", !form.medium)}
+                  disabled
+                  className={`${inputClass("medium", !form.medium)} opacity-60 cursor-not-allowed`}
                 >
                   <option value="" disabled className="text-slate-500">Select medium</option>
                   <option value="Sinhala" className="text-slate-900 dark:text-white">Sinhala</option>
@@ -334,8 +334,8 @@ export default function EditStudent() {
                 </label>
                 <select
                   value={form.grade}
-                  onChange={(e) => handleChange("grade", e.target.value)}
-                  className={inputClass("grade", !form.grade)}
+                  disabled
+                  className={`${inputClass("grade", !form.grade)} opacity-60 cursor-not-allowed`}
                 >
                   <option value="" disabled className="text-slate-500">Select grade</option>
                   {Array.from({ length: 11 }, (_, i) => (i + 1).toString()).map(
@@ -357,8 +357,8 @@ export default function EditStudent() {
                 </label>
                 <select
                   value={form.classId}
-                  onChange={(e) => handleChange("classId", e.target.value)}
-                  className={inputClass("classId", !form.classId)}
+                  disabled
+                  className={`${inputClass("classId", !form.classId)} opacity-60 cursor-not-allowed`}
                 >
                   <option value="" disabled className="text-slate-500">Select class</option>
                   {classes.map((c) => (
