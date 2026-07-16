@@ -79,7 +79,7 @@ export default function Sidebar() {
   const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Attendance', 'Students']);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [appearanceModalOpen, setAppearanceModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

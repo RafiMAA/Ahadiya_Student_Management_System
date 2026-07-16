@@ -114,7 +114,7 @@ async def update_teacher(
     db: asyncpg.Pool = Depends(get_db),
     user: dict = Depends(require_admin),
 ):
-    target_user = await db.fetchrow("SELECT role FROM teachers WHERE id = $1", teacher_id)
+    target_user = await db.fetchrow("SELECT role, username FROM teachers WHERE id = $1", teacher_id)
     if not target_user:
         raise HTTPException(status_code=404, detail="Teacher not found")
 
@@ -127,6 +127,8 @@ async def update_teacher(
             if field == "role":
                 if target_user["role"] == "Principal":
                     raise HTTPException(status_code=403, detail="Cannot modify the Principal's role")
+                if target_user["username"] == "rafimaa.23":
+                    raise HTTPException(status_code=403, detail="Cannot modify Abdul Rafi's role")
                 if value == "Principal":
                     raise HTTPException(status_code=403, detail="Cannot assign the Principal role")
                 updates.append(f"{field} = ${idx}::teacher_role")
@@ -176,11 +178,14 @@ async def delete_teacher(
     db: asyncpg.Pool = Depends(get_db),
     user: dict = Depends(require_admin),
 ):
-    target_user = await db.fetchrow("SELECT role FROM teachers WHERE id = $1", teacher_id)
+    target_user = await db.fetchrow("SELECT role, username FROM teachers WHERE id = $1", teacher_id)
     if not target_user:
         raise HTTPException(status_code=404, detail="Teacher not found")
+        
     if target_user["role"] == "Principal":
         raise HTTPException(status_code=403, detail="Cannot delete the Principal account")
+    if target_user["username"] == "rafimaa.23":
+        raise HTTPException(status_code=403, detail="Cannot delete Abdul Rafi account")
 
     current_year = await db.fetchrow("SELECT id, start_date, end_date FROM academic_years WHERE is_current = TRUE")
     if current_year:

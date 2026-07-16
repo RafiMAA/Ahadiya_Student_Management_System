@@ -19,7 +19,6 @@ export default function TeacherProfile() {
   const [showReset, setShowReset] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [showRoleChange, setShowRoleChange] = useState(false);
   
   const [editForm, setEditForm] = useState({ fullName: '', contact: '', address: '', assignedClassId: '' });
   const [resetPassword, setResetPassword] = useState('');
@@ -94,14 +93,12 @@ export default function TeacherProfile() {
     }
   };
 
-  const confirmRoleChange = async () => {
-    if (!id || !teacher) return;
+  const handleRoleChange = async (newRole: string) => {
+    if (!id || !teacher || newRole === teacher.role) return;
     setSubmitting(true);
-    const newRole = teacher.role === 'Admin' ? 'Teacher' : 'Admin';
     try {
       await api.patch(`/teachers/${id}`, { role: newRole });
       addToast('success', `Role updated to ${newRole}`);
-      setShowRoleChange(false);
       queryClient.invalidateQueries({ queryKey: ['teacher', id] });
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
     } catch (err: any) {
@@ -133,8 +130,12 @@ export default function TeacherProfile() {
     return 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400';
   };
 
+  const isViewingUserSuperAdmin = user?.role === 'Super Admin';
   const hasAdminAccess = ['Principal', 'Admin', 'Super Admin'].includes(user?.role || '');
-  const canModify = hasAdminAccess && teacher.role !== 'Principal' && teacher.role !== 'Super Admin';
+  const isProtectedUser = teacher.role === 'Principal' || teacher.username === 'rafimaa.23';
+  const canModify = hasAdminAccess && 
+                    !isProtectedUser && 
+                    (teacher.role !== 'Super Admin' || isViewingUserSuperAdmin);
   const isSelf = user?.id === teacher.id;
 
   return (
@@ -236,23 +237,25 @@ export default function TeacherProfile() {
                   <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
                     <Shield className="w-4 h-4 text-blue-500" /> System Permissions
                   </h4>
-                  <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <p className="font-medium text-slate-900 dark:text-white text-sm">Administrator Access</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Allows managing students and classes.</p>
+                      <p className="font-medium text-slate-900 dark:text-white text-sm">System Role</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Controls the user's access level in the system.</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button 
-                        type="button"
-                        disabled={!canModify}
-                        onClick={() => canModify && setShowRoleChange(true)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out ${['Admin', 'Principal', 'Super Admin'].includes(teacher.role) ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'} ${!canModify ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      <select 
+                        disabled={!canModify || submitting}
+                        value={teacher.role}
+                        onChange={(e) => {
+                          if (canModify) handleRoleChange(e.target.value);
+                        }}
+                        className={`text-sm font-medium border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 min-w-[140px] ${!canModify ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-500' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 cursor-pointer'}`}
                       >
-                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${['Admin', 'Principal', 'Super Admin'].includes(teacher.role) ? 'translate-x-4' : 'translate-x-0'}`} />
-                      </button>
-                      <span className="text-sm font-medium text-slate-600 dark:text-slate-300 w-16">
-                        {['Admin', 'Principal', 'Super Admin'].includes(teacher.role) ? 'Granted' : 'Revoked'}
-                      </span>
+                        <option value="Teacher">Teacher</option>
+                        <option value="Admin">Admin</option>
+                        {(isViewingUserSuperAdmin || teacher.role === 'Super Admin') && <option value="Super Admin">Super Admin</option>}
+                        {teacher.role === 'Principal' && <option value="Principal">Principal</option>}
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -340,30 +343,7 @@ export default function TeacherProfile() {
         </DialogContent>
       </Dialog>
 
-      {/* Role Change Dialog */}
-      <Dialog open={showRoleChange} onOpenChange={setShowRoleChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Role Change</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to change {teacher.full_name}'s access level?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg mt-2">
-            <p className="text-sm text-slate-700 dark:text-slate-300">
-              {teacher.role !== 'Admin' 
-                ? 'Granting Admin access allows this user to manage students, classes, and view attendance history.'
-                : 'Revoking Admin access will restrict this user to standard teacher capabilities.'}
-            </p>
-          </div>
-          <div className="flex justify-end gap-3 mt-4 border-t border-slate-200 dark:border-slate-800 pt-4">
-            <button onClick={() => setShowRoleChange(false)} disabled={submitting} className="px-4 py-2 text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
-            <button onClick={confirmRoleChange} disabled={submitting} className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${teacher.role !== 'Admin' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
-              {submitting ? 'Updating...' : teacher.role !== 'Admin' ? 'Grant Access' : 'Revoke Access'}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

@@ -105,7 +105,7 @@ export default function Dashboard() {
 
 
   const handleProtectedNavigation = (path: string) => {
-    if (user?.role === 'Principal' || user?.role === 'Admin') {
+    if (user?.role === 'Principal' || user?.role === 'Admin' || user?.role === 'Super Admin') {
       navigate(path);
     } else {
       addToast('error', 'Only admin can access this');
