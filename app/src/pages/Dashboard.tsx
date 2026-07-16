@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Users, GraduationCap, BookOpen, Calendar, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/apiClient';
@@ -111,8 +111,6 @@ export default function Dashboard() {
     return <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" /></div>;
   }
 
-  const submittedClasses = summary.classes.filter(c => c.submitted);
-  const unsubmittedClasses = summary.classes.filter(c => !c.submitted);
   const getPercentageColor = (pct: number) => {
     if (pct >= 80) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
     if (pct >= 60) return 'text-amber-600 bg-amber-50 border-amber-200';
