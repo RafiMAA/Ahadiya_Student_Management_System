@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Users, GraduationCap, BookOpen, Calendar, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
@@ -21,10 +21,11 @@ interface SummaryData {
   classes: { class_id: string; class_name: string; present: number; absent: number; percentage: number; submitted: boolean }[];
 }
 
-
-
-
-
+interface BootstrapData {
+  user: any;
+  academic_year: { year_label: string };
+  summary: SummaryData;
+}
 function StatCard({ title, value, icon: Icon, color, onClick }: { title: string; value: string | number; icon: React.ElementType; color: string; onClick?: () => void }) {
   const colorMap: Record<string, string> = {
     emerald: 'border-t-emerald-500', blue: 'border-t-blue-500', amber: 'border-t-amber-500', slate: 'border-t-slate-500',
@@ -72,10 +73,16 @@ export default function Dashboard() {
   const { addToast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const { data: summary, isLoading: loading, error } = useQuery({
-    queryKey: ['dashboard-summary'],
-    queryFn: () => api.get<SummaryData>('/attendance/summary'),
+    queryKey: ['dashboard-bootstrap'],
+    queryFn: async () => {
+      const data = await api.get<BootstrapData>('/dashboard/bootstrap');
+      // Pre-seed AppContext cache to prevent extra network requests
+      queryClient.setQueryData(['current-academic-year'], data.academic_year);
+      return data.summary;
+    },
   });
 
   useEffect(() => {

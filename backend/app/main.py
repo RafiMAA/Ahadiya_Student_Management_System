@@ -15,6 +15,7 @@ from app.routes import (
     promotion_routes,
     teacher_routes,
     audit_routes,
+    dashboard_routes,
 )
 
 
@@ -44,8 +45,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Compression
+from starlette.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # Register routers
 app.include_router(auth_routes.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(dashboard_routes.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(academic_year_routes.router, prefix="/api/academic-years", tags=["Academic Years"])
 app.include_router(class_routes.router, prefix="/api/classes", tags=["Classes"])
 app.include_router(student_routes.router, prefix="/api/students", tags=["Students"])

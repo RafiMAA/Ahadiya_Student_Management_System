@@ -48,14 +48,43 @@ async def logout(user: dict = Depends(get_current_user)):
 
 
 @router.get("/me", response_model=UserProfile)
-async def get_me(user: dict = Depends(get_current_user)):
-    return UserProfile(**user)
+async def get_me(
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Pool = Depends(get_db),
+):
+    """Fetch the full user profile — this is the one endpoint that hits the DB for user details."""
+    from app.cache import get_current_year_id
+    year_id = await get_current_year_id(db)
+
+    row = await db.fetchrow(
+        """
+        SELECT t.id, t.full_name, t.username, t.contact, t.address, t.role,
+               ('Grade ' || c.grade || ' ' || c.medium::TEXT || ' ' || c.gender_type::TEXT) AS assigned_class
+        FROM teachers t
+        LEFT JOIN classes c ON c.teacher_id = t.id AND c.academic_year_id = $2
+        WHERE t.id = $1
+        """,
+        user["id"], year_id,
+    )
+    if not row:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return UserProfile(
+        id=str(row["id"]),
+        full_name=row["full_name"],
+        username=row["username"],
+        contact=row["contact"],
+        address=row["address"],
+        role=row["role"],
+        assigned_class=row["assigned_class"],
+    )
+
 
 @router.put("/profile", response_model=UserProfile)
 async def update_profile(
     body: ProfileUpdateRequest,
     user: dict = Depends(get_current_user),
-    db: asyncpg.Pool = Depends(get_db)
+    db: asyncpg.Pool = Depends(get_db),
 ):
     updates = []
     values = []
@@ -87,7 +116,22 @@ async def update_profile(
         idx += 1
         
     if not updates:
-        return UserProfile(**user)
+        # No changes — return current profile
+        from app.cache import get_current_year_id
+        year_id = await get_current_year_id(db)
+        row = await db.fetchrow(
+            """SELECT t.id, t.full_name, t.username, t.contact, t.address, t.role,
+                      ('Grade ' || c.grade || ' ' || c.medium::TEXT || ' ' || c.gender_type::TEXT) AS assigned_class
+               FROM teachers t
+               LEFT JOIN classes c ON c.teacher_id = t.id AND c.academic_year_id = $2
+               WHERE t.id = $1""",
+            user["id"], year_id,
+        )
+        return UserProfile(
+            id=str(row["id"]), full_name=row["full_name"], username=row["username"],
+            contact=row["contact"], address=row["address"], role=row["role"],
+            assigned_class=row["assigned_class"],
+        )
         
     values.append(user["id"])
     query = f"UPDATE teachers SET {', '.join(updates)} WHERE id = ${idx} RETURNING id, full_name, username, contact, address, role"
@@ -100,6 +144,14 @@ async def update_profile(
         {"updates": [k.split(" =")[0] for k in updates]},
         user["id"]
     )
+
+    # Fetch assigned_class separately
+    from app.cache import get_current_year_id
+    year_id = await get_current_year_id(db)
+    assigned_class = await db.fetchval(
+        "SELECT ('Grade ' || grade || ' ' || medium::TEXT || ' ' || gender_type::TEXT) FROM classes WHERE teacher_id = $1 AND academic_year_id = $2",
+        row["id"], year_id,
+    )
     
     return UserProfile(
         id=str(row["id"]),
@@ -108,5 +160,5 @@ async def update_profile(
         contact=row["contact"],
         address=row["address"],
         role=row["role"],
-        assigned_class=user.get("assigned_class")
+        assigned_class=assigned_class,
     )

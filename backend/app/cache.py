@@ -48,4 +48,17 @@ TOTAL_STUDENTS = "total_students"
 TOTAL_TEACHERS = "total_teachers"
 TOTAL_CLASSES = "total_classes"
 CURRENT_YEAR = "current_academic_year"
+CURRENT_YEAR_ID = "current_academic_year_id"
 TOTAL_ALUMNIS = "total_alumnis"
+USER_PREFIX = "user:"
+
+
+async def get_current_year_id(db) -> str | None:
+    """Return the current academic year UUID, using cache to avoid repeated subqueries."""
+    cached = cache_get(CURRENT_YEAR_ID)
+    if cached is not None:
+        return cached
+    year_id = await db.fetchval("SELECT id FROM academic_years WHERE is_current = TRUE")
+    if year_id is not None:
+        cache_set(CURRENT_YEAR_ID, year_id, ttl=300)  # 5 min — rarely changes
+    return year_id

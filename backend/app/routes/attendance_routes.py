@@ -189,6 +189,9 @@ async def attendance_status_for_date(
     db: asyncpg.Pool = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
+    from app.cache import get_current_year_id
+    year_id = await get_current_year_id(db)
+
     # Single query with LEFT JOIN instead of N+1 per-class queries
     rows = await db.fetch(
         """SELECT c.id AS class_id, c.grade, c.medium, c.gender_type,
@@ -202,10 +205,10 @@ async def attendance_status_for_date(
                JOIN students st ON att.student_id = st.id
                WHERE att.attendance_date = $1 AND st.current_class_id = att.class_id
            ) a ON a.class_id = c.id
-           WHERE c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
+           WHERE c.academic_year_id = $2
            GROUP BY c.id, c.grade, c.medium, c.gender_type
            ORDER BY c.medium, c.grade, c.gender_type""",
-        attendance_date,
+        attendance_date, year_id,
     )
 
     result = []
@@ -229,7 +232,7 @@ async def attendance_summary(
     import asyncio
     from datetime import datetime
     from app.cache import (
-        cache_get, cache_set,
+        cache_get, cache_set, get_current_year_id,
         TOTAL_STUDENTS, TOTAL_TEACHERS, TOTAL_CLASSES, CURRENT_YEAR, TOTAL_ALUMNIS,
     )
 
@@ -244,6 +247,9 @@ async def attendance_summary(
     parsed_date = datetime.strptime(
         attendance_date, "%Y-%m-%d").date() if isinstance(attendance_date, str) else attendance_date
 
+    # Get cached academic year ID upfront — avoids subqueries in every SQL below
+    year_id = await get_current_year_id(db)
+
     # Try cache for slow-changing aggregate counts
     cached_students = cache_get(TOTAL_STUDENTS)
     cached_teachers = cache_get(TOTAL_TEACHERS)
@@ -257,7 +263,7 @@ async def attendance_summary(
 
     if cached_classes is None:
         tasks.append(db.fetchval(
-            "SELECT COUNT(*) FROM classes WHERE academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)"
+            "SELECT COUNT(*) FROM classes WHERE academic_year_id = $1", year_id
         ))
         task_keys.append("classes")
     if cached_students is None:
@@ -267,29 +273,14 @@ async def attendance_summary(
         tasks.append(db.fetchval("SELECT COUNT(*) FROM teachers WHERE status = 'Active'"))
         task_keys.append("teachers")
     if cached_year is None:
-        tasks.append(db.fetchval("SELECT year_label FROM academic_years WHERE is_current = TRUE"))
+        tasks.append(db.fetchval("SELECT year_label FROM academic_years WHERE id = $1", year_id))
         task_keys.append("year")
     if cached_alumnis is None:
         tasks.append(db.fetchval("SELECT COUNT(*) FROM students WHERE status = 'Alumni'"))
         task_keys.append("alumnis")
 
-    # Always need these — they depend on the selected date
-    tasks.append(db.fetch("""
-        SELECT a.status 
-        FROM attendance a 
-        JOIN classes c ON a.class_id = c.id 
-        JOIN students s ON a.student_id = s.id AND s.current_class_id = a.class_id
-        WHERE a.attendance_date = $1 AND c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
-    """, parsed_date))
-    task_keys.append("overall_att")
-    tasks.append(db.fetchval("""
-        SELECT COUNT(DISTINCT a.class_id) 
-        FROM attendance a 
-        JOIN classes c ON a.class_id = c.id 
-        JOIN students s ON a.student_id = s.id AND s.current_class_id = a.class_id
-        WHERE a.attendance_date = $1 AND c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
-    """, parsed_date))
-    task_keys.append("classes_submitted")
+    # Per-class attendance data — single query that gives us everything we need
+    # We derive overall present/absent/classes_submitted from this, eliminating 2 separate queries
     tasks.append(db.fetch(
         """SELECT c.id AS class_id, c.grade, c.medium, c.gender_type,
                   COALESCE(SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END), 0) AS present,
@@ -302,10 +293,10 @@ async def attendance_summary(
                JOIN students st ON att.student_id = st.id
                WHERE att.attendance_date = $1 AND st.current_class_id = att.class_id
            ) a ON a.class_id = c.id
-           WHERE c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
+           WHERE c.academic_year_id = $2
            GROUP BY c.id, c.grade, c.medium, c.gender_type
            ORDER BY c.medium, c.grade, c.gender_type""",
-        parsed_date,
+        parsed_date, year_id,
     ))
     task_keys.append("class_att_rows")
 
@@ -343,21 +334,22 @@ async def attendance_summary(
         total_alumnis = result_map["alumnis"]
         cache_set(TOTAL_ALUMNIS, total_alumnis)
 
-    overall_att = result_map["overall_att"]
-    classes_submitted = result_map["classes_submitted"]
     class_att_rows = result_map["class_att_rows"]
 
-    # Overall attendance stats
-    present = sum(1 for a in overall_att if a["status"] == "Present")
-    absent = len(overall_att) - present
-    pct = round((present / len(overall_att)) * 100, 1) if overall_att else 0.0
-
-    # Per-class attendance data — built from the single JOIN query
+    # Derive overall stats + per-class data from the single query result
+    # This replaces 2 separate DB queries (overall_att + classes_submitted)
+    present = 0
+    absent = 0
+    classes_submitted = 0
     classes_data = []
     for r in class_att_rows:
         class_name = f"Grade {r['grade']} {r['medium']} {r['gender_type']}"
         c_present, c_absent, c_total = r["present"], r["absent"], r["total"]
         c_pct = round((c_present / c_total) * 100, 1) if c_total > 0 else 0.0
+        present += c_present
+        absent += c_absent
+        if c_total > 0:
+            classes_submitted += 1
         classes_data.append({
             "class_id": str(r["class_id"]),
             "class_name": class_name,
@@ -366,6 +358,9 @@ async def attendance_summary(
             "percentage": c_pct,
             "submitted": c_total > 0,
         })
+
+    total_att = present + absent
+    pct = round((present / total_att) * 100, 1) if total_att > 0 else 0.0
 
     return AttendanceSummary(
         total_students=total_students, total_teachers=total_teachers,

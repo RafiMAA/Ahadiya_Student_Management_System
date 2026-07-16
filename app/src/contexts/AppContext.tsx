@@ -25,6 +25,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: currentYear } = useQuery({
     queryKey: ['current-academic-year'],
     queryFn: () => api.get<{ year_label: string }>('/academic-years/current'),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   return (

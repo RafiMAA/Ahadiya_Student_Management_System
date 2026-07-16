@@ -304,7 +304,8 @@ async def list_achievements(
 ):
     """List all achievements for a student, grouped by academic year."""
     # Get current academic year id
-    current_year_id = await db.fetchval("SELECT id FROM academic_years WHERE is_current = TRUE")
+    from app.cache import get_current_year_id
+    current_year_id = await get_current_year_id(db)
 
     rows = await db.fetch(
         """SELECT sa.*, ay.year_label AS academic_year_label, t.full_name AS created_by_name
@@ -364,6 +365,8 @@ async def add_achievement(
         student_id, str(year["id"]), student["current_grade"], body.achievement_text.strip(), user["id"],
     )
 
+    teacher_name = await db.fetchval("SELECT full_name FROM teachers WHERE id = $1", user["id"])
+
     return AchievementResponse(
         id=str(row["id"]),
         student_id=str(row["student_id"]),
@@ -372,7 +375,7 @@ async def add_achievement(
         grade=row["grade"],
         achievement_text=row["achievement_text"],
         created_by=str(row["created_by"]),
-        created_by_name=user["full_name"],
+        created_by_name=teacher_name,
         created_at=row["created_at"],
         can_delete=True,
     )
@@ -394,7 +397,8 @@ async def delete_achievement(
         raise HTTPException(status_code=404, detail="Achievement not found")
 
     # Check it belongs to the current academic year
-    current_year_id = await db.fetchval("SELECT id FROM academic_years WHERE is_current = TRUE")
+    from app.cache import get_current_year_id
+    current_year_id = await get_current_year_id(db)
     if str(row["academic_year_id"]) != str(current_year_id):
         raise HTTPException(status_code=403, detail="Cannot delete achievements from past academic years")
 

@@ -45,39 +45,19 @@ def decode_token(token: str) -> dict:
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: asyncpg.Pool = Depends(get_db),
 ) -> dict:
-    """Extract and validate the current user from JWT token."""
+    """Extract user identity from JWT token — pure decode, zero DB hits.
+
+    Returns only {"id": ..., "role": ...} which is all that authorization
+    checks need.  Endpoints that require the full teacher profile (e.g.
+    /auth/me) should query the DB themselves.
+    """
     payload = decode_token(credentials.credentials)
     user_id = payload.get("sub")
-    if not user_id:
+    role = payload.get("role")
+    if not user_id or not role:
         raise HTTPException(status_code=401, detail="Invalid token payload")
-
-    row = await db.fetchrow(
-        """
-        SELECT t.id, t.full_name, t.username, t.contact, t.address, t.role, t.status,
-               ('Grade ' || c.grade || ' ' || c.medium::TEXT || ' ' || c.gender_type::TEXT) AS assigned_class
-        FROM teachers t
-        LEFT JOIN classes c ON c.teacher_id = t.id
-            AND c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
-        WHERE t.id = $1
-        """,
-        user_id,
-    )
-    if not row:
-        raise HTTPException(status_code=401, detail="User not found")
-    if row["status"] == "Inactive":
-        raise HTTPException(status_code=403, detail="Account is inactive")
-
-    return {
-        "id": str(row["id"]),
-        "full_name": row["full_name"],
-        "username": row["username"],
-        "contact": row["contact"],
-        "address": row["address"],
-        "role": row["role"],
-        "assigned_class": row["assigned_class"],
-    }
+    return {"id": user_id, "role": role}
 
 
 def require_role(*roles: str):

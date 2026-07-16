@@ -27,17 +27,20 @@ async def list_teachers(
     db: asyncpg.Pool = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
+    from app.cache import get_current_year_id
+    year_id = await get_current_year_id(db)
+
     query = """
         SELECT t.id, t.full_name, t.contact, t.address, t.username, t.role, t.created_at,
                STRING_AGG('Grade ' || c.grade || ' ' || c.medium::TEXT || ' ' || c.gender_type::TEXT, ', ' ORDER BY c.grade, c.medium, c.gender_type) AS assigned_class_name,
                ARRAY_AGG(c.id::TEXT) FILTER (WHERE c.id IS NOT NULL) AS assigned_class_ids
         FROM teachers t
         LEFT JOIN classes c ON c.teacher_id = t.id
-            AND c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
+            AND c.academic_year_id = $1
         WHERE 1=1
     """
-    params = []
-    idx = 1
+    params = [year_id]
+    idx = 2
     if search:
         query += f" AND t.full_name ILIKE ${idx}"
         params.append(f"%{search}%"); idx += 1
@@ -53,17 +56,20 @@ async def get_teacher(
     db: asyncpg.Pool = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
+    from app.cache import get_current_year_id
+    year_id = await get_current_year_id(db)
+
     query = """
         SELECT t.id, t.full_name, t.contact, t.address, t.username, t.role, t.created_at,
                STRING_AGG('Grade ' || c.grade || ' ' || c.medium::TEXT || ' ' || c.gender_type::TEXT, ', ' ORDER BY c.grade, c.medium, c.gender_type) AS assigned_class_name,
                ARRAY_AGG(c.id::TEXT) FILTER (WHERE c.id IS NOT NULL) AS assigned_class_ids
         FROM teachers t
         LEFT JOIN classes c ON c.teacher_id = t.id
-            AND c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
+            AND c.academic_year_id = $2
         WHERE t.id = $1
         GROUP BY t.id
     """
-    row = await db.fetchrow(query, teacher_id)
+    row = await db.fetchrow(query, teacher_id, year_id)
     if not row:
         raise HTTPException(status_code=404, detail="Teacher not found")
         

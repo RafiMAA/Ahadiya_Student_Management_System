@@ -35,6 +35,8 @@ async def list_classes(
     db: asyncpg.Pool = Depends(get_db),
     _user: dict = Depends(get_current_user),
 ):
+    from app.cache import get_current_year_id
+
     query = """
         SELECT c.*, t.full_name AS teacher_name,
                COUNT(s.id) AS total_students
@@ -51,8 +53,11 @@ async def list_classes(
         params.append(academic_year_id)
         idx += 1
     else:
-        # Default: current academic year
-        query += f" AND c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)"
+        # Default: current academic year (cached)
+        year_id = await get_current_year_id(db)
+        query += f" AND c.academic_year_id = ${idx}"
+        params.append(year_id)
+        idx += 1
 
     if grade:
         query += f" AND c.grade = ${idx}"

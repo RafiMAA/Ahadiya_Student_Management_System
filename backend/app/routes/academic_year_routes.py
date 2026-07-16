@@ -69,7 +69,7 @@ async def update_current_year_label(
     db: asyncpg.Pool = Depends(get_db),
     user: dict = Depends(require_super_admin),
 ):
-    from app.cache import cache_invalidate, CURRENT_YEAR
+    from app.cache import cache_invalidate, CURRENT_YEAR, CURRENT_YEAR_ID
     row = await db.fetchrow(
         "UPDATE academic_years SET year_label = $1 WHERE is_current = TRUE RETURNING *",
         body.year_label,
@@ -81,7 +81,7 @@ async def update_current_year_label(
         "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
         "ACADEMIC_YEAR_UPDATED", {"new_label": body.year_label}, user["id"],
     )
-    cache_invalidate(CURRENT_YEAR)
+    cache_invalidate(CURRENT_YEAR, CURRENT_YEAR_ID)
     return _row_to_response(row)
 
 
@@ -104,6 +104,10 @@ async def set_current_year(
         "INSERT INTO audit_logs (action, details, performed_by) VALUES ($1, $2, $3)",
         "ACADEMIC_YEAR_SET_CURRENT", {"year_id": year_id}, user["id"],
     )
+    # Invalidate all caches that depend on the current academic year
+    from app.cache import cache_invalidate, cache_invalidate_prefix, CURRENT_YEAR, CURRENT_YEAR_ID, TOTAL_CLASSES, USER_PREFIX
+    cache_invalidate(CURRENT_YEAR, CURRENT_YEAR_ID, TOTAL_CLASSES)
+    cache_invalidate_prefix(USER_PREFIX)  # assigned_class depends on year
     return _row_to_response(row)
 
 
